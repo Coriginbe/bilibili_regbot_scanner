@@ -1,36 +1,36 @@
-# Bilibili UID 检查器
+# bilibili_regbot_scanner
 
-随机生成 7 位 UID 访问 B 站用户空间，自动筛选「乱码英文用户名 + 0 级」的异常账号并记录。
+随机生成 7 位 UID 访问 B 站用户空间，自动筛选「注册机/机器人账号」并记录。
 
-## 视频教程
+注册机账号判定标准：**乱码用户名 + 等级 0 级 + 粉丝 0 + 关注 0 + 无任何内容（投稿/动态/收藏/追番等）**
 
-[https://www.bilibili.com/video/BV1xjAMzsEsB](https://www.bilibili.com/video/BV1xjAMzsEsB)
 
 ## 项目结构
 
 ```
-bilibili_uid_check/
-├── bilibili_uid_checker.py      # 主程序
-├── start_chrome_windows.bat     # Windows Chrome 启动脚本
-├── start_chrome_macos.sh        # macOS Chrome 启动脚本
-├── start_chrome_linux.sh        # Linux Chrome 启动脚本
-├── result.txt                   # 检查结果输出文件
-└── requirements.txt             # Python 依赖
+bilibili_regbot_scanner/
+├── bilibili_regbot_scanner.py  # 主程序
+├── changelog.md                # 更新日志
+├── start_chrome_linux.sh       # Linux Chrome 启动脚本
+├── start_chrome_macos.sh       # macOS Chrome 启动脚本
+├── start_chrome_windows.bat    # Windows Chrome 启动脚本
+└── result.txt                  # 扫描结果输出文件
 ```
+
 
 ## 环境要求
 
 - **Python** 3.7+
-- **Google Chrome** 浏览器
 - **DrissionPage** Python 库
+- **Google Chrome** 浏览器
+
 
 ## 安装
 
 ```bash
-pip install -r requirements.txt
+pip install DrissionPage
 ```
 
----
 
 ## 快速开始
 
@@ -79,10 +79,10 @@ Chrome 启动成功后，**另开一个终端窗口**运行：
 
 ```bash
 # macOS / Linux
-python3 bilibili_uid_checker.py
+python3 bilibili_regbot_scanner.py
 
 # Windows
-python bilibili_uid_checker.py
+python bilibili_regbot_scanner.py
 ```
 
 ### 操作流程
@@ -92,7 +92,6 @@ python bilibili_uid_checker.py
 3. 符合条件的账号自动写入 `result.txt`
 4. 随时按 **Ctrl+C** 停止程序
 
----
 
 ## 筛选规则
 
@@ -100,22 +99,12 @@ python bilibili_uid_checker.py
 
 | 条件 | 说明 |
 |------|------|
-| 全小写英文 | 用户名仅由 a-z 组成，无数字、中文、特殊字符 |
-| 长度 6~12 | 过短或过长的用户名排除 |
-| 辅音占比 > 60% | 乱码用户名通常辅音密集 |
-| 无常见英文子串 | 不含 game、love、the、ing 等 100+ 常见单词 |
+| 乱码用户名 | 仅由 a-z 小写字母和数字组成，长度 6~16，辅音占比 > 60%，不含常见英文单词/姓氏拼音/年份日期 |
 | 等级 Lv0 | 用户等级必须为 0 级 |
+| 粉丝数 0 | 粉丝数量为 0 |
+| 关注数 0 | 关注数量为 0 |
+| 无任何内容 | main 区域无投稿、动态、收藏、追番、追剧等任何内容 |
 
-## 输出格式
-
-`result.txt` 中每条记录格式如下：
-
-```
-UID: 1234567 | 用户名: xbjulymph
-UID: 3987654 | 用户名: fmxhgdxfl
-```
-
----
 
 ## 启动参数说明
 
@@ -128,7 +117,6 @@ Chrome 启动脚本中使用了以下参数：
 | `--no-default-browser-check` | 跳过默认浏览器检查弹窗 |
 | `--user-data-dir=<临时路径>` | 使用临时目录作为用户数据目录（无用户态核心参数），不影响日常 Chrome 配置 |
 
----
 
 ## 常见问题
 
@@ -145,7 +133,7 @@ Chrome 启动脚本中使用了以下参数：
 默认调试端口为 `9222`。如需更改：
 
 1. 修改启动脚本中的端口号
-2. 同时修改 `bilibili_uid_checker.py` 中的 `DEBUGGING_PORT` 变量
+2. 同时修改 `bilibili_regbot_scanner.py` 中的 `DEBUGGING_PORT` 变量
 
 ### 无法获取用户名或等级
 

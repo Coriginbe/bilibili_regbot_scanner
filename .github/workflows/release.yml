@@ -1,0 +1,150 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Clear all caches
+      run: |
+        # 清理 pip 缓存
+        pip cache purge
+        
+        # 清理 PyInstaller 缓存
+        if (Test-Path "build") {
+          Remove-Item -Path "build" -Recurse -Force
+          Write-Host "Removed build directory"
+        }
+        
+        if (Test-Path "dist") {
+          Remove-Item -Path "dist" -Recurse -Force
+          Write-Host "Removed dist directory"
+        }
+        
+        # 删除 .spec 文件
+        Get-ChildItem -Path "." -Filter "*.spec" -ErrorAction SilentlyContinue | Remove-Item -Force
+        Write-Host "Removed .spec files"
+        
+        # 清理 PyInstaller 用户缓存
+        $pyinstallerCache = "$env:LOCALAPPDATA\pyinstaller"
+        if (Test-Path $pyinstallerCache) {
+          Remove-Item -Path $pyinstallerCache -Recurse -Force
+          Write-Host "Removed PyInstaller cache"
+        }
+        
+        Write-Host "All caches cleared"
+      shell: pwsh
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --no-cache-dir pyinstaller DrissionPage
+    
+    - name: Get version and architecture
+      id: vars
+      run: |
+        $VERSION = "${{ github.ref_name }}"
+        if ($VERSION -match '^v(.+)$') {
+          $VERSION = $Matches[1]
+        }
+        
+        if ([Environment]::Is64BitOperatingSystem) {
+          $ARCH = "win_amd64"
+        } else {
+          $ARCH = "win_x86"
+        }
+        
+        echo "VERSION=$VERSION" >> $env:GITHUB_OUTPUT
+        echo "ARCH=$ARCH" >> $env:GITHUB_OUTPUT
+        echo "EXE_NAME=bilibili_regbot_scanner_${VERSION}_${ARCH}" >> $env:GITHUB_OUTPUT
+        
+        Write-Host "Version: $VERSION"
+        Write-Host "Architecture: $ARCH"
+        Write-Host "EXE Name: bilibili_regbot_scanner_${VERSION}_${ARCH}"
+      shell: pwsh
+    
+    - name: Build EXE
+      run: |
+        $exeName = "${{ steps.vars.outputs.EXE_NAME }}"
+        
+        Write-Host "Building: $exeName.exe"
+        
+        pyinstaller --onefile `
+          --name "$exeName" `
+          --console `
+          --clean `
+          --noconfirm `
+          --workpath "./build" `
+          --distpath "./dist" `
+          --specpath "./" `
+          --hidden-import=urllib3 `
+          --hidden-import=requests `
+          --collect-all DrissionPage `
+          bilibili_regbot_scanner.py
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "PyInstaller build failed with exit code: $LASTEXITCODE"
+          exit $LASTEXITCODE
+        }
+        
+        # 验证输出
+        Write-Host ""
+        Write-Host "=== Build Results ==="
+        if (Test-Path "dist") {
+          $exeFiles = Get-ChildItem "dist" -Filter "*.exe"
+          if ($exeFiles.Count -eq 0) {
+            Write-Error "No EXE files found in dist directory!"
+            exit 1
+          }
+          
+          foreach ($file in $exeFiles) {
+            $size = [math]::Round($file.Length / 1MB, 2)
+            Write-Host "  - $($file.Name) ($size MB)"
+          }
+          
+          $actualFile = $exeFiles | Select-Object -First 1
+          if ($actualFile.Name -ne "$exeName.exe") {
+            Write-Host ""
+            Write-Host "File name mismatch detected!"
+            Write-Host "Expected: $exeName.exe"
+            Write-Host "Actual: $($actualFile.Name)"
+            Write-Host "Renaming to correct name..."
+            
+            $targetPath = "dist/$exeName.exe"
+            if (Test-Path $targetPath) {
+              Remove-Item $targetPath -Force
+            }
+            Move-Item $actualFile.FullName $targetPath -Force
+            Write-Host "Renamed successfully"
+          }
+          
+          Write-Host ""
+          Write-Host "Build completed successfully!"
+        } else {
+          Write-Error "dist directory not found!"
+          exit 1
+        }
+      shell: pwsh
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/${{ steps.vars.outputs.EXE_NAME }}.exe
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+        name: "v${{ steps.vars.outputs.VERSION }}"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
