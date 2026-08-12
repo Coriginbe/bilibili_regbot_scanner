@@ -10,7 +10,7 @@
 ```
 bilibili_regbot_scanner/
 ├── bilibili_regbot_scanner.py  # 主程序
-├── changelog.md                # 更新日志
+├── CHANGELOG.md                # 更新日志
 ├── start_chrome_linux.sh       # Linux Chrome 启动脚本
 ├── start_chrome_macos.sh       # macOS Chrome 启动脚本
 ├── start_chrome_windows.bat    # Windows Chrome 启动脚本
